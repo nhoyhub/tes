@@ -1,56 +1,66 @@
-const TelegramBot = require('node-telegram-bot-api');
+export default {
+  async fetch(request, env) {
+    if (request.method === "POST") {
+      const update = await request.json();
+      
+      // 1. Handle Messages
+      if (update.message) {
+        const chatId = update.message.chat.id;
+        const text = update.message.text || "";
+        const name = update.message.from?.first_name || "there";
 
-// Your Token
-const TOKEN = '7626608558:AAG2sSmF3awXpk8dbSKoEAb4QDpObyN-kNA'; 
-
-const bot = new TelegramBot(TOKEN, { polling: true });
-
-console.log("Bot is starting...");
-
-// --- 1. Handle Text Messages ---
-bot.on('message', (msg) => {
-    const chatId = msg.chat.id;
-    const text = msg.text;
-    const name = msg.from.first_name;
-
-    if (!text) return; 
-
-    // If user types "/start" or "button", show the button
-    if (text === '/start' || text.toLowerCase().includes('button')) {
-        bot.sendMessage(chatId, `Welcome ${name}! Click the button below:`, {
-            reply_markup: {
+        if (text === "/start" || text.toLowerCase().includes("button")) {
+          await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendMessage`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              chat_id: chatId,
+              text: `Welcome ${name}! Click the button below:`,
+              reply_markup: {
                 inline_keyboard: [
-                    [
-                        // { text: "Label", callback_data: "ID_FOR_CODE" }
-                        { text: "🎲 Get Random Number", callback_data: 'get_random_num' }
-                    ]
+                  [{ text: "🎲 Get Random Number", callback_data: "get_random_num" }]
                 ]
-            }
-        });
-    } 
-    else if (text.toLowerCase().includes('hello')) {
-        bot.sendMessage(chatId, `Hello back to you, ${name}! 👋`);
+              }
+            })
+          });
+        } else if (text.toLowerCase().includes("hello")) {
+          await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendMessage`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ chat_id: chatId, text: `Hello back to you, ${name}! 👋` })
+          });
+        }
+      }
+
+      // 2. Handle Callback Queries (Button Clicks)
+      if (update.callback_query) {
+        const query = update.callback_query;
+        const chatId = query.message.chat.id;
+        
+        if (query.data === "get_random_num") {
+          const randomNum = Math.floor(Math.random() * 100) + 1;
+          
+          // Send the number
+          await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendMessage`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              chat_id: chatId,
+              text: `Your random number is: ${randomNum} 🎲`
+            })
+          });
+
+          // Stop the loading animation on the button
+          await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/answerCallbackQuery`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ callback_query_id: query.id })
+          });
+        }
+      }
+
+      return new Response("OK");
     }
-});
-
-// --- 2. Handle Button Clicks ---
-bot.on('callback_query', (query) => {
-    const chatId = query.message.chat.id;
-    const data = query.data; // This is the 'callback_data' we set above
-
-    if (data === 'get_random_num') {
-        // Generate a random number between 1 and 100
-        const randomNum = Math.floor(Math.random() * 100) + 1;
-
-        // Send the result to the user
-        bot.sendMessage(chatId, `Your random number is: ${randomNum} 🎲`);
-
-        // Tell Telegram the button click was handled (stops the loading animation)
-        bot.answerCallbackQuery(query.id);
-    }
-});
-
-// Error handling
-bot.on('polling_error', (error) => {
-    console.log(`[Polling Error]: ${error.message}`);
-});
+    return new Response("Bot Worker is running!");
+  }
+}

@@ -1,0 +1,6 @@
+name = "my-bot"
+main = "index.js"
+compatibility_date = "2023-12-18"
+[vars]
+# Remember to use the NEW token from BotFather here
+BOT_TOKEN = "7626608558:AAG2sSmF3awXpk8dbSKoEAb4QDpObyN-kNA"
